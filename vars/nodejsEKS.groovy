@@ -66,21 +66,6 @@ def call(Map configMap){
                         )
                     }
                 }
-            }
-            stage('Deploy') {
-                when { // if this expression is true then below deploy script will run.same like snapshot in wells
-                    expression{
-                        params.deploy
-                    }
-                }
-                steps{
-                    script{
-                        def params = [
-                            string(name: 'appVersion', value: "${appVersion}") //if wait is true this backend will wait until downstream 'backend-deploy' is completed
-                        ]   
-                        build job: '${component}-deploy', parameters: params, wait: false
-                    }
-                }
             } 
             stage('Sonar Scan'){
                 environment {
@@ -135,7 +120,7 @@ def call(Map configMap){
                     }
                 }
             }
-            stage('Verify Deployment'){
+            /* stage('Verify Deployment'){
                 steps{
                     script{
                         rollbackStatus = sh(script: "kubectl rollout status deployment/backend -n ${project} --timeout=1m || true", returnStdout: true).trim()
@@ -163,31 +148,8 @@ def call(Map configMap){
                             }
                         }
                     }
-                }
-            }
-            
-            stage('Nexus Artifact Upload'){
-                steps{
-                    script{
-                        nexusArtifactUploader(
-                            nexusVersion: 'nexus3',
-                            protocol: 'http',
-                            nexusUrl: "${nexusUrl}",
-                            groupId: 'com.expense',
-                            version: "${appVersion}",
-                            repository: "backend",
-                            credentialsId: 'nexus-auth',
-                            artifacts: [
-                                [artifactId: "backend" ,
-                                classifier: '',
-                                file: "backend-" + "${appVersion}" + '.zip',
-                                type: 'zip']
-                            ]
-                        )
-                    }
-                }
-            }
-        }
+                } */
+        }  
         post { 
             always { 
                 echo 'I will always say Hello again!'
