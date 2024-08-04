@@ -46,6 +46,61 @@ def call(Map configMap){
                     """
                 }
             }
+            stage('Nexus Artifact Upload'){
+                steps{ //while variables using below give "" not ''
+                    script{ // in Jenkins for push we need credantials line 52. pull no need. As we are pushing to nexus credantials are mandatory
+                        nexusArtifactUploader(
+                            nexusVersion: 'nexus3',
+                            protocol: 'http',
+                            nexusUrl: "${nexusUrl}",
+                            groupId: com."${project}",
+                            version: "${appVersion}",
+                            repository: "${component}",
+                            credentialsId: 'nexus-auth',
+                            artifacts: [
+                                [artifactId: "${component}" ,
+                                classifier: '',
+                                file: "${component}-" + "${appVersion}" + '.zip',
+                                type: 'zip']
+                            ]
+                        )
+                    }
+                }
+            }
+            stage('Deploy') {
+                when { // if this expression is true then below deploy script will run.same like snapshot in wells
+                    expression{
+                        params.deploy
+                    }
+                }
+                steps{
+                    script{
+                        def params = [
+                            string(name: 'appVersion', value: "${appVersion}") //if wait is true this backend will wait until downstream 'backend-deploy' is completed
+                        ]   
+                        build job: '${component}-deploy', parameters: params, wait: false
+                    }
+                }
+            } 
+            stage('Sonar Scan'){
+                environment {
+                    scannerHome = tool 'sonar-6.0' //referring scanner CLI
+                }
+                steps {
+                    script {
+                        withSon arQubeEnv('sonar-6.0') { //referring sonar server
+                            sh "${scannerHome}/bin/sonar-scanner"
+                        }
+                    }
+                }
+            }
+            stage("Quality Gate") {
+                steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+                }
+            }
             stage('Docker build'){
                 steps{
 
