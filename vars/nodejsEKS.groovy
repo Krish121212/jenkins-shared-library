@@ -46,48 +46,9 @@ def call(Map configMap){
                     """
                 }
             }
-            /* stage('Nexus Artifact Upload'){
-                steps{ //while variables using below give "" not ''
-                    script{ // in Jenkins for push we need credantials line 52. pull no need. As we are pushing to nexus credantials are mandatory
-                        nexusArtifactUploader(
-                            nexusVersion: 'nexus3',
-                            protocol: 'http',
-                            nexusUrl: "${nexusUrl}",
-                            groupId: com."${project}",
-                            version: "${appVersion}",
-                            repository: "${component}",
-                            credentialsId: 'nexus-auth',
-                            artifacts: [
-                                [artifactId: "${component}" ,
-                                classifier: '',
-                                file: "${component}-" + "${appVersion}" + '.zip',
-                                type: 'zip']
-                            ]
-                        )
-                    }
-                }
-            }  */
-            /* stage('Sonar Scan'){
-                environment {
-                    scannerHome = tool 'sonar-6.0' //referring scanner CLI
-                }
-                steps {
-                    script {
-                        withSon arQubeEnv('sonar-6.0') { //referring sonar server
-                            sh "${scannerHome}/bin/sonar-scanner"
-                        }
-                    }
-                }
-            }
-            stage("Quality Gate") {
-                steps {
-                timeout(time: 30, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-                }
-            } */
             stage('Docker build'){
                 steps{
+
                     sh """
                         aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
                         docker build -t ${account_id}.dkr.ecr.${region}.amazonaws.com/${project}-${component}:${appVersion} .
@@ -95,6 +56,7 @@ def call(Map configMap){
                     """
                 }
             }
+
             stage('Deploy'){
                 steps{
                     script{
@@ -102,7 +64,7 @@ def call(Map configMap){
                         if(releaseExists.isEmpty()){
                             echo "${component} not installed yet, first time installation"
                             sh"""
-                                aws eks update-kubeconfig --region ${region} --name ${project}-uat
+                                aws eks update-kubeconfig --region ${region} --name ${project}-dev
                                 cd helm
                                 sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
                                 helm install ${component} -n ${project} .
@@ -111,7 +73,7 @@ def call(Map configMap){
                         else{
                             echo "${component} exists, running upgrade"
                             sh"""
-                                aws eks update-kubeconfig --region ${region} --name ${project}-uat
+                                aws eks update-kubeconfig --region ${region} --name ${project}-dev
                                 cd helm
                                 sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
                                 helm upgrade ${component} -n ${project} .
@@ -120,7 +82,7 @@ def call(Map configMap){
                     }
                 }
             }
-            /* stage('Verify Deployment'){
+            stage('Verify Deployment'){
                 steps{
                     script{
                         rollbackStatus = sh(script: "kubectl rollout status deployment/backend -n ${project} --timeout=1m || true", returnStdout: true).trim()
@@ -148,8 +110,31 @@ def call(Map configMap){
                             }
                         }
                     }
-                } */
-        }  
+                }
+            }
+            
+            /* stage('Nexus Artifact Upload'){
+                steps{
+                    script{
+                        nexusArtifactUploader(
+                            nexusVersion: 'nexus3',
+                            protocol: 'http',
+                            nexusUrl: "${nexusUrl}",
+                            groupId: 'com.expense',
+                            version: "${appVersion}",
+                            repository: "backend",
+                            credentialsId: 'nexus-auth',
+                            artifacts: [
+                                [artifactId: "backend" ,
+                                classifier: '',
+                                file: "backend-" + "${appVersion}" + '.zip',
+                                type: 'zip']
+                            ]
+                        )
+                    }
+                }
+            } */
+        }
         post { 
             always { 
                 echo 'I will always say Hello again!'
