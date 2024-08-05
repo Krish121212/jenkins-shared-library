@@ -1,7 +1,7 @@
 def call(Map configMap){
     pipeline {
         agent {
-            label 'AGENT-1'
+            label 'Agent-1'
         }
         options {
             timeout(time: 30, unit: 'MINUTES')
@@ -102,7 +102,7 @@ def call(Map configMap){
                         if(releaseExists.isEmpty()){
                             echo "${component} not installed yet, first time installation"
                             sh"""
-                                aws eks update-kubeconfig --region ${region} --name ${project}-dev
+                                aws eks update-kubeconfig --region ${region} --name ${project}-uat
                                 cd helm
                                 sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
                                 helm install ${component} -n ${project} .
@@ -111,7 +111,7 @@ def call(Map configMap){
                         else{
                             echo "${component} exists, running upgrade"
                             sh"""
-                                aws eks update-kubeconfig --region ${region} --name ${project}-dev
+                                aws eks update-kubeconfig --region ${region} --name ${project}-uat
                                 cd helm
                                 sed -i 's/IMAGE_VERSION/${appVersion}/g' values.yaml
                                 helm upgrade ${component} -n ${project} .
